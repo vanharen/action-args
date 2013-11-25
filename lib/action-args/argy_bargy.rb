@@ -22,7 +22,7 @@ module ActionController
     #
     def self.included(klass)
       class << klass
-        @@args_cfg = {}
+        @@args_cfg ||= {}
       end
       klass.extend(ClassMethods)
       klass.before_filter :access_args
@@ -61,14 +61,29 @@ module ActionController
       cfg = self.class.get_cfg(params[:action].to_s)
       if cfg
         @args = ActionArgs::Accessor.new(params, cfg)
-        if !@args.valid? && @args.should_raise?
-          errors_str = @args.errors.map do |name, exc|
-            " #{name.inspect} :: #{exc}"
-          end.join("\n")
+        if @args.should_raise?
+          validate_arguments
+        end
+      end
+    end
+
+    # Validate the arguments, raising if there are errors
+    def validate_arguments
+      if !@args.valid?
           raise(ActionArgs::ArgumentError,
                 'Invalid arguments supplied for action ' +
-                "'#{params[:action].to_s}'.\n#{errors_str}")
+                "'#{params[:action].to_s}'.\n#{arg_errors_str}")
         end
+    end
+
+    # Get a string representation of the errors, if any
+    def arg_errors_str
+      if !@args.valid?
+        @args.errors.map do |name, exc|
+            " #{name.inspect} :: #{exc}"
+          end.join("\n")
+      else
+        ''
       end
     end
 
